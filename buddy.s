@@ -18,7 +18,7 @@ head:
 alloc_init:
 	pushl %ebp
 	movl  %esp , %ebp
-	
+
 	movl $SYS_BRK , %eax
 	movl $0 , %ebx
 	int  $LINUX_SYSCALL
@@ -36,6 +36,10 @@ allocate:  # push the size in %eax
 	pushl %ebp
 	movl  %esp,%ebp
 
+	pushl %ebx
+	pushl %edi
+	pushl %esi
+	
 	addl $8 , %eax
 
 	movl $3 , %edi
@@ -69,7 +73,7 @@ use_space:
 	addl heap_begin , %eax
 	movl 0(%eax) , %edx
 	subl heap_begin , %eax
-	addl heap_begin , %edx
+	
 	movl %edx , head(,%esi,4)
 
 get_fit_size:
@@ -121,16 +125,95 @@ finish_fill:
 
 
 get_space:
-	addl $4 , %eax
+	
 	addl heap_begin , %eax
-	movl %ebx , (%eax)
-
+	movl %edi , (%eax)
 	addl $4 , %eax
+	movl %ebx , (%eax)
+	addl $4 , %eax
+
+	popl %esi
+	popl %edi
+	popl %ebx
 
 	movl %ebp , %esp
 	pop %ebp
 	ret
 
 
+
+.globl deallocate
+.type deallocate,@function	
+deallocate: # put addres in %eax
+	
+	pushl %ebp
+	movl  %esp,%ebp
+
+	pushl %ebx
+	pushl %edi
+	pushl %esi
+	
+	subl $8 , %eax
+
+	movl 0(%eax) , %edi
+	movl 4(%eax) , %ebx
+	movl $-1 , 4(%eax)   
+#used: log(len)    len ... 
+#free:  next -1  ...
+	subl heap_begin , %eax
+
+merge:
+	movl %eax , %ecx
+	xorl %ebx , %ecx
+
+	addl heap_begin , %ecx
+	addl %ebx , %ecx
+	cmp  curr_brk , %ecx
+	ja end_merge
+	subl %ebx , %ecx
+
+	cmp $-1 , 4(%ecx)
+	jne end_merge
+	subl heap_begin , %ecx
+
+	leal head(,%edi,4) , %edx # edx is the real address
+searh_buddy:
+	cmp (%edx) , %ecx
+	je get_buddy
+
+	movl (%edx) , %edx
+	addl heap_begin , %edx
+	jmp searh_buddy
+
+get_buddy:
+	addl heap_begin , %ecx
+	movl (%ecx) , %esi  # esi:temp
+	subl heap_begin , %ecx
+	movl %esi , (%edx)
+
+	andl %ecx , %eax
+	incl %edi
+	shll $1 , %ebx
+	jmp merge
+
+end_merge:
+	addl heap_begin , %eax
+	
+	movl $-1 , 4(%eax)
+	movl head(,%edi,4) , %edx
+	movl %edx , 0(%eax)
+
+	subl heap_begin , %eax
+	movl %eax , head(,%edi,4)
+
+	popl %esi
+	popl %edi
+	popl %ebx
+
+	movl %ebp , %esp
+	pop %ebp
+	ret
+
+	
 
 
