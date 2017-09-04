@@ -104,6 +104,11 @@ check_brk:
 	pushl %eax
 	pushl %ebx
 
+
+	decl %ecx
+	orl $0xfff , %ecx
+	incl %ecx
+
 	movl $SYS_BRK , %eax
 	movl %ecx , %ebx
 	int $LINUX_SYSCALL
@@ -157,9 +162,12 @@ deallocate: # put addres in %eax
 
 	movl 0(%eax) , %edi
 	movl 4(%eax) , %ebx
-	movl $-1 , 4(%eax)   
-#used: log(len)    len ... 
-#free:  next -1  ...
+
+	movl $0   , %edx
+	subl %ebx , %edx
+	movl %edx , 4(%eax)   
+#used: [log(len)][ len] ... 
+#free: [next]    [-len]  ...
 	subl heap_begin , %eax
 
 merge:
@@ -172,7 +180,9 @@ merge:
 	ja end_merge
 	subl %ebx , %ecx
 
-	cmp $-1 , 4(%ecx)
+	movl $0 , %edx
+	subl 4(%ecx) , %edx
+	cmp %edx , %ebx
 	jne end_merge
 	subl heap_begin , %ecx
 
@@ -199,7 +209,9 @@ get_buddy:
 end_merge:
 	addl heap_begin , %eax
 	
-	movl $-1 , 4(%eax)
+	movl $0 , %esi #esi:temp
+	subl %ebx , %esi
+	movl %esi , 4(%eax)
 	movl head(,%edi,4) , %edx
 	movl %edx , 0(%eax)
 

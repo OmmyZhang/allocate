@@ -10,7 +10,7 @@ _start:
 
 	call alloc_init
 
-	movl $3 , %eax
+/*	movl $3 , %eax
 	call allocate
 
 	pushl %eax
@@ -25,6 +25,10 @@ _delete:
 
 	movl $1000000 , %eax
 	call allocate
+*/
+	movl $10000000 , %eax
+	call allocate
+	call deallocate
 
 another_test:
 	movl $3 , %eax
